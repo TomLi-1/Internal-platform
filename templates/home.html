@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Photo App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+        <header>
+            <h1>Photo App</h1>
+            <nav>
+                <p>gibsonjack</p>
+                <a href="https://www.google.com" style="text-decoration: none;">Sign out</a>
+            </nav>
+        </header>
+
+        <!-- recommendation panel -->
+        <div class="recommendationPanel">
+            <div class="profile">
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRThRj7Pxl7D1mikqLJEOXfKrnN7m-b7VKtWg&usqp=CAU" alt="profile_img" />
+                <p id="profileName">gibsonjack</p>
+            </div>
+            <div class="suggestions"></div>
+                <p id="suggestionsforyou">suggestions for you</p>
+                <div class="suggestedAccount">
+                    <img src="https://kb.rspca.org.au/wp-content/uploads/2018/11/golder-retriever-puppy.jpeg" alt="profile_img" />
+                    <div class="nameBox">
+                        <p class="suggestedPeople">Tom</p>
+                        <p class="suggestWord">suggested for you</p>
+                    </div>
+                    <a class="followLink" href="https://www.google.com">follow</a>
+                </div>
+
+                <div class="suggestedAccount">
+                    <img src="https://static.onecms.io/wp-content/uploads/sites/20/2021/04/21/dog-nose.jpg" alt="profile_img" />
+                    <div class="nameBox">
+                        <p class="suggestedPeople">Jimmy</p>
+                        <p class="suggestWord">suggested for you</p>
+                    </div>
+                    <a class="followLink" href="https://www.google.com">follow</a>
+                </div>
+
+                <div class="suggestedAccount">
+                    <img src="https://th-thumbnailer.cdn-si-edu.com/VmzPzAffMSDTOUmFSQoh2DmYP0E=/fit-in/1600x0/https://tf-cmsv2-smithsonianmag-media.s3.amazonaws.com/filer/ad/7b/ad7b3860-ad5f-43dc-800e-af57830cd1d3/labrador.jpg" alt="profile_img" />
+                    <div class="nameBox">
+                        <p class="suggestedPeople">Jack</p>
+                        <p class="suggestWord">suggested for you</p>
+                    </div>
+                    <a class="followLink" href="https://www.google.com">follow</a>
+                </div>
+
+                <div class="suggestedAccount">
+                    <img src="https://media.newyorker.com/photos/5f6cd4dbe1656cfb9de92e71/master/pass/Gupta-DogTourofHouse.jpg" alt="profile_img" />
+                    <div class="nameBox">
+                        <p class="suggestedPeople">Rose</p>
+                        <p class="suggestWord">suggested for you</p>
+                    </div>
+                    <a class="followLink" href="https://www.google.com">follow</a>
+                </div>
+
+                <div class="suggestedAccount">
+                    <img src="https://www.cityofpaloalto.org/files/assets/public/police-department/animal-services/img_2989.jpg?dimension=pageimage&w=480" alt="profile_img" />
+                    <div class="nameBox">
+                        <p class="suggestedPeople">Alex</p>
+                        <p class="suggestWord">suggested for you</p>
+                    </div>
+                    <a class="followLink" href="https://www.google.com">follow</a>
+                </div>
+            </div>
+
+            <!-- story panel -->
+            <div class="storyPanel">
+                <div class="story">
+                    <img src="https://www.utkaltoday.com/wp-content/uploads/2020/09/Rachel-green-Utkal-Today-feat-1.jpg" alt="pic"/>
+                    <p>Rachel</p>
+                </div>
+
+
+                <div class="story">
+                     <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRuD0ipkcBIGny_NQIDLIsfcfz1X9MsE8Z3Vg&usqp=CAU" alt="pic"/>
+                     <p>Monica</p>
+                </div>
+                <div class="story">
+                     <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS8522W7Ao6lkusIIpfEglEhxnm-2UWQeKBjg&usqp=CAU" alt="pic"/>
+                     <p>Ross</p>
+                </div>
+                <div class="story">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ9ZhUERFL-zsXev5-QL-aJB5AAE12JYTNxhg&usqp=CAU" alt="pic"/>
+                    <p>Joey</p>
+                </div>
+                <div class="story">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTj5IGLqp--p4Xz50lGZgYy4Qa5qrnB_Ds6KQ&usqp=CAU" alt="pic"/>
+                    <p>Phoebe</p>
+                </div>
+            </div>
+
+
+            <!-- card panel -->
+            <div class="cardPanel">
+                <div class="card">
+                    <!-- post header -->
+                    <div calss="postHeader">
+                        <div class="postUser">gibsonjack</div>
+                        <div><em class="fas fa-ellipsis-h"></em> </div>
+                    </div>
+                    <div class="postPic">
+                        <img src="{{ url_for('static', filename='pic1.jpeg') }}" alt="postPic"/>
+                    </div>
+                    <!-- post content -->
+                    <div class="postContent">
+                        <div class="icons">
+                            <div class="threeIcons">
+                                <em class="far fa-heart"></em>
+                                <em class="far fa-comment"></em>
+                                <em class="far fa-paper-plane"></em>
+                            </div>
+                            <div>
+                                <em class="far fa-bookmark"></em>
+                            </div>
+                        </div>
+                        <p><strong>30 Likes</strong></p>
+                        <div class="realContent">
+                            <p class="postUser"><strong>gibsonjack</strong></p>
+                            <p>I really love the sunset in summer. Hope someday I can be back.</p>
+                            <a href="https//www.google.com" style="text-decoration: none;">more</a>
+                        </div>
+                        <!-- comments -->
+                        <div class="comments">
+                            <div class="comment">
+                                <p class="postUser"><strong>Ross</strong></p>
+                                <p>Yes it was so beautiful!! 😭</p>
+                            </div>
+                            <div class="comment">
+                                <p class="postUser"><strong>Michael</strong></p>
+                                <p>OMG!!! You are such a professional photographer! 🥳</p>
+                            </div>
+                            <div class="postTime" style="color: darkgrey;font: 0.9em sans-serif;">1 Day Ago</div>
+                        </div>
+                        <!-- add comment -->
+                        <div class="addCommentSection">
+                            <div class="addComment">
+                                <em class="far fa-smile"></em>
+                                <input placeholder="Add a comment"/>
+                            </div>
+                            <a href="https//www.google.com" style="text-decoration: none">Post</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <!-- post header -->
+                    <div calss="postHeader">
+                        <div class="postUser">gibsonjack</div>
+                        <div><em class="fas fa-ellipsis-h"></em> </div>
+                    </div>
+                    <div class="postPic">
+                        <img src="{{ url_for('static', filename='pic1.jpeg') }}" alt="postPic"/>
+                    </div>
+                    <!-- post content -->
+                    <div class="postContent">
+                        <div class="icons">
+                            <div class="threeIcons">
+                                <em class="far fa-heart"></em>
+                                <em class="far fa-comment"></em>
+                                <em class="far fa-paper-plane"></em>
+                            </div>
+                            <div>
+                                <em class="far fa-bookmark"></em>
+                            </div>
+                        </div>
+                        <p><strong>30 Likes</strong></p>
+                        <div class="realContent">
+                            <p class="postUser"><strong>gibsonjack</strong></p>
+                            <p>I really love the sunset in summer. Hope someday I can be back.</p>
+                            <a href="https//www.google.com" style="text-decoration: none;">more</a>
+                        </div>
+                        <!-- comments -->
+                        <div class="comments">
+                            <div class="comment">
+                                <p class="postUser"><strong>Ross</strong></p>
+                                <p>Yes it was so beautiful!! 😭</p>
+                            </div>
+                            <div class="comment">
+                                <p class="postUser"><strong>Michael</strong></p>
+                                <p>OMG!!! You are such a professional photographer! 🥳</p>
+                            </div>
+                            <div class="postTime" style="color: darkgrey;font: 0.9em sans-serif;">1 Day Ago</div>
+                        </div>
+                        <!-- add comment -->
+                        <div class="addCommentSection">
+                            <div class="addComment">
+                                <em class="far fa-smile"></em>
+                                <input placeholder="Add a comment"/>
+                            </div>
+                            <a href="https//www.google.com" style="text-decoration: none">Post</a>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="card">
+                    <!-- post header -->
+                    <div calss="postHeader">
+                        <div class="postUser">gibsonjack</div>
+                        <div><em class="fas fa-ellipsis-h"></em> </div>
+                    </div>
+                    <div class="postPic">
+                        <img src="{{ url_for('static', filename='pic1.jpeg') }}" alt="postPic"/>
+                    </div>
+                    <!-- post content -->
+                    <div class="postContent">
+                        <div class="icons">
+                            <div class="threeIcons">
+                                <em class="far fa-heart"></em>
+                                <em class="far fa-comment"></em>
+                                <em class="far fa-paper-plane"></em>
+                            </div>
+                            <div>
+                                <em class="far fa-bookmark"></em>
+                            </div>
+                        </div>
+                        <p><strong>30 Likes</strong></p>
+                        <div class="realContent">
+                            <p class="postUser"><strong>gibsonjack</strong></p>
+                            <p>I really love the sunset in summer. Hope someday I can be back.</p>
+                            <a href="https//www.google.com" style="text-decoration: none;">more</a>
+                        </div>
+                        <!-- comments -->
+                        <div class="comments">
+                            <div class="comment">
+                                <p class="postUser"><strong>Ross</strong></p>
+                                <p>Yes it was so beautiful!! 😭</p>
+                            </div>
+                            <div class="comment">
+                                <p class="postUser"><strong>Michael</strong></p>
+                                <p>OMG!!! You are such a professional photographer! 🥳</p>
+                            </div>
+                            <div class="postTime" style="color: darkgrey;font: 0.9em sans-serif;">1 Day Ago</div>
+                        </div>
+                        <!-- add comment -->
+                        <div class="addCommentSection">
+                            <div class="addComment">
+                                <em class="far fa-smile"></em>
+                                <input placeholder="Add a comment"/>
+                            </div>
+                            <a href="https//www.google.com" style="text-decoration: none">Post</a>
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <div class="card">
+                    <!-- post header -->
+                    <div calss="postHeader">
+                        <div class="postUser">gibsonjack</div>
+                        <div><em class="fas fa-ellipsis-h"></em> </div>
+                    </div>
+                    <div class="postPic">
+                        <img src="{{ url_for('static', filename='pic1.jpeg') }}" alt="postPic"/>
+                    </div>
+                    <!-- post content -->
+                    <div class="postContent">
+                        <div class="icons">
+                            <div class="threeIcons">
+                                <em class="far fa-heart"></em>
+                                <em class="far fa-comment"></em>
+                                <em class="far fa-paper-plane"></em>
+                            </div>
+                            <div>
+                                <em class="far fa-bookmark"></em>
+                            </div>
+                        </div>
+                        <p><strong>30 Likes</strong></p>
+                        <div class="realContent">
+                            <p class="postUser"><strong>gibsonjack</strong></p>
+                            <p>I really love the sunset in summer. Hope someday I can be back.</p>
+                            <a href="https//www.google.com" style="text-decoration: none;">more</a>
+                        </div>
+                        <!-- comments -->
+                        <div class="comments">
+                            <div class="comment">
+                                <p class="postUser"><strong>Ross</strong></p>
+                                <p>Yes it was so beautiful!! 😭</p>
+                            </div>
+                            <div class="comment">
+                                <p class="postUser"><strong>Michael</strong></p>
+                                <p>OMG!!! You are such a professional photographer! 🥳</p>
+                            </div>
+                            <div class="postTime" style="color: darkgrey;font: 0.9em sans-serif;">1 Day Ago</div>
+                        </div>
+                        <!-- add comment -->
+                        <div class="addCommentSection">
+                            <div class="addComment">
+                                <em class="far fa-smile"></em>
+                                <input placeholder="Add a comment"/>
+                            </div>
+                            <a href="https//www.google.com" style="text-decoration: none">Post</a>
+                        </div>
+
+                    </div>
+                </div>
+
+
+
+            </div>
+
+        </div>
+
+
+	<!-- <script src="index.js"></script> -->
+  </body>
+</html>
+
+<!-- <i class="far fa-smile"></i>
+
+
+<i class="far fa-heart"></i>
+
+<i class="far fa-comment"></i>
+
+<i class="far fa-paper-plane"></i>
+
+<i class="far fa-bookmark"></i> -->
