@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&display=swap" rel="stylesheet">
   </head>
-  <body data-current-user-id="{{ profile.id if profile.id is not none else '' }}" data-current-username="{{ profile.username }}">
+  <body data-current-user-id="{{ profile.id|default('') }}" data-current-username="{{ profile.username }}">
     <header>
       <h1>Photo App</h1>
       <nav>
@@ -54,7 +54,7 @@
     <!-- card panel -->
     <div class="cardPanel">
       {% for post in posts %}
-      <div class="card" data-post-id="{{ post.id if post.id is not none else '' }}">
+      <div class="card" data-post-id="{{ post.id|default('') }}">
         <!-- post header -->
         <div class="postHeader">
           <div class="postUser">{{ post.user.username }}</div>

@@ -1,7 +1,48 @@
 function initCommentPosting() {
   const body = document.body;
-  const currentUserId = body.dataset.currentUserId;
-  const currentUsername = body.dataset.currentUsername || "you";
+  let currentUserId = body.dataset.currentUserId;
+  let currentUsername = body.dataset.currentUsername || "you";
+
+  function getStoredToken() {
+    return window.localStorage.getItem("authToken");
+  }
+
+  function setStoredToken(token) {
+    window.localStorage.setItem("authToken", token);
+  }
+
+  async function ensureToken() {
+    let token = getStoredToken();
+    if (token) {
+      return token;
+    }
+
+    const username = window.prompt("Username:");
+    if (!username) {
+      return null;
+    }
+    const password = window.prompt("Password:");
+    if (!password) {
+      return null;
+    }
+
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      alert(payload.error || "Login failed.");
+      return null;
+    }
+    if (payload.user) {
+      currentUsername = payload.user.username || currentUsername;
+      currentUserId = payload.user.id || currentUserId;
+    }
+    setStoredToken(payload.token);
+    return payload.token;
+  }
 
   const sections = document.querySelectorAll(".addCommentSection");
   sections.forEach((section) => {
@@ -17,10 +58,6 @@ function initCommentPosting() {
       const postId = card.dataset.postId;
       const text = input.value.trim();
 
-      if (!currentUserId) {
-        alert("No current user found. Seed the database first.");
-        return;
-      }
       if (!postId) {
         alert("This post is not from the database yet.");
         return;
@@ -30,14 +67,22 @@ function initCommentPosting() {
         return;
       }
 
+      const token = await ensureToken();
+      if (!token) {
+        return;
+      }
+
       button.setAttribute("aria-busy", "true");
       button.textContent = "Posting...";
 
       try {
         const response = await fetch(`/api/posts/${postId}/comments`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: Number(currentUserId), text }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ text }),
         });
 
         const payload = await response.json();
