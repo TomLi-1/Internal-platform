@@ -1,11 +1,22 @@
 import logging
 import os
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from types import SimpleNamespace
 
 import jwt
-from flask import Flask, current_app, jsonify, render_template, request, g
+from flask import (
+    Flask,
+    current_app,
+    jsonify,
+    render_template,
+    request,
+    g,
+    redirect,
+    send_file,
+    url_for,
+)
 from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 from sqlalchemy.orm import selectinload
 
@@ -147,13 +158,42 @@ def _decode_token(token):
     )
 
 
+def _get_token_from_request():
+    header = request.headers.get("Authorization", "")
+    if header.startswith("Bearer "):
+        token = header.split(" ", 1)[1].strip()
+        if token:
+            return token
+    return request.cookies.get("auth_token")
+
+
+def _set_auth_cookie(response, token):
+    max_age = int(current_app.config.get("JWT_EXPIRES_HOURS", 6)) * 3600
+    response.set_cookie(
+        "auth_token",
+        token,
+        httponly=True,
+        samesite="Lax",
+        secure=bool(current_app.config.get("AUTH_COOKIE_SECURE")),
+        max_age=max_age,
+    )
+
+
+def _clear_auth_cookie(response):
+    response.set_cookie("auth_token", "", expires=0)
+
+
+def _issue_auth_response(user, status_code=200):
+    token = _create_token(user.id)
+    response = jsonify({"token": token, "user": _serialize_user(user)})
+    _set_auth_cookie(response, token)
+    return response, status_code
+
+
 def require_auth(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        header = request.headers.get("Authorization", "")
-        if not header.startswith("Bearer "):
-            return _json_error("Authorization required.", 401)
-        token = header.split(" ", 1)[1].strip()
+        token = _get_token_from_request()
         if not token:
             return _json_error("Authorization required.", 401)
         try:
@@ -185,6 +225,8 @@ def create_app(config_overrides=None):
             "SQLALCHEMY_TRACK_MODIFICATIONS": False,
             "JWT_SECRET_KEY": os.getenv("JWT_SECRET_KEY", "dev-secret"),
             "JWT_EXPIRES_HOURS": int(os.getenv("JWT_EXPIRES_HOURS", "6")),
+            "AUTH_COOKIE_SECURE": os.getenv("AUTH_COOKIE_SECURE", "false").lower()
+            == "true",
         }
     )
     app.config.update(config_overrides)
@@ -196,6 +238,114 @@ def create_app(config_overrides=None):
     def log_api_response(response):
         if request.path.startswith("/api/"):
             app.logger.info("%s %s %s", request.method, request.path, response.status_code)
+        return response
+
+    @app.route("/openapi.json")
+    def openapi_spec():
+        return send_file(Path(__file__).with_name("openapi.json"))
+
+    @app.route("/docs")
+    def docs():
+        return render_template("docs.html")
+
+    @app.route("/login")
+    def login_page():
+        return render_template(
+            "auth.html", mode="login", next_url=request.args.get("next") or ""
+        )
+
+    @app.route("/register")
+    def register_page():
+        return render_template(
+            "auth.html", mode="register", next_url=request.args.get("next") or ""
+        )
+
+    @app.route("/auth/login", methods=["POST"])
+    def login_form():
+        username = request.form.get("username")
+        password = request.form.get("password")
+        if not username or not password:
+            app.logger.info("Login failed: missing credentials.")
+            return render_template(
+                "auth.html",
+                mode="login",
+                next_url=request.args.get("next") or "",
+                error="Username and password are required.",
+            ), 400
+
+        user = User.query.filter_by(username=username).first()
+        if not user or not user.check_password(password):
+            app.logger.info("Login failed: invalid credentials for %s.", username)
+            return render_template(
+                "auth.html",
+                mode="login",
+                next_url=request.args.get("next") or "",
+                error="Invalid credentials.",
+            ), 401
+
+        token = _create_token(user.id)
+        next_url = request.form.get("next") or request.args.get("next") or url_for("index")
+        response = redirect(next_url)
+        _set_auth_cookie(response, token)
+        app.logger.info("Login successful for %s.", username)
+        return response
+
+    @app.route("/auth/register", methods=["POST"])
+    def register_form():
+        data = {
+            "username": request.form.get("username"),
+            "email": request.form.get("email"),
+            "first_name": request.form.get("first_name"),
+            "last_name": request.form.get("last_name"),
+            "password": request.form.get("password"),
+        }
+        missing = [field for field, value in data.items() if not value]
+        if missing:
+            app.logger.info("Register failed: missing fields %s.", ", ".join(missing))
+            return render_template(
+                "auth.html",
+                mode="register",
+                next_url=request.args.get("next") or "",
+                error="Missing fields: " + ", ".join(missing),
+            ), 400
+
+        if User.query.filter_by(username=data["username"]).first():
+            return render_template(
+                "auth.html",
+                mode="register",
+                next_url=request.args.get("next") or "",
+                error="Username already exists.",
+            ), 409
+        if User.query.filter_by(email=data["email"]).first():
+            return render_template(
+                "auth.html",
+                mode="register",
+                next_url=request.args.get("next") or "",
+                error="Email already exists.",
+            ), 409
+
+        user = User(
+            data["first_name"],
+            data["last_name"],
+            data["username"],
+            data["email"],
+        )
+        user.set_password(data["password"])
+        db.session.add(user)
+        db.session.commit()
+
+        token = _create_token(user.id)
+        next_url = request.form.get("next") or request.args.get("next") or url_for("index")
+        response = redirect(next_url)
+        _set_auth_cookie(response, token)
+        app.logger.info("Register successful for %s.", data["username"])
+        return response
+
+    @app.route("/logout")
+    def logout():
+        response = redirect(url_for("login_page"))
+        _clear_auth_cookie(response)
+        app.logger.info("User logged out.")
         return response
 
     @app.route("/")
@@ -224,6 +374,7 @@ def create_app(config_overrides=None):
         required = ["username", "email", "first_name", "last_name", "password"]
         missing = [field for field in required if not data.get(field)]
         if missing:
+            app.logger.info("API register failed: missing fields %s.", ", ".join(missing))
             return _json_error("Missing fields: " + ", ".join(missing), 400)
 
         if User.query.filter_by(username=data["username"]).first():
@@ -241,8 +392,8 @@ def create_app(config_overrides=None):
         db.session.add(user)
         db.session.commit()
 
-        token = _create_token(user.id)
-        return jsonify({"token": token, "user": _serialize_user(user)}), 201
+        app.logger.info("API register successful for %s.", data["username"])
+        return _issue_auth_response(user, 201)
 
     @app.route("/api/auth/login", methods=["POST"])
     def login():
@@ -250,14 +401,16 @@ def create_app(config_overrides=None):
         username = data.get("username")
         password = data.get("password")
         if not username or not password:
+            app.logger.info("API login failed: missing credentials.")
             return _json_error("username and password are required.", 400)
 
         user = User.query.filter_by(username=username).first()
         if not user or not user.check_password(password):
+            app.logger.info("API login failed: invalid credentials for %s.", username)
             return _json_error("Invalid credentials.", 401)
 
-        token = _create_token(user.id)
-        return jsonify({"token": token, "user": _serialize_user(user)})
+        app.logger.info("API login successful for %s.", username)
+        return _issue_auth_response(user)
 
     @app.route("/api/auth/me", methods=["GET"])
     @require_auth

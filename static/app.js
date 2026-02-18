@@ -3,45 +3,28 @@ function initCommentPosting() {
   let currentUserId = body.dataset.currentUserId;
   let currentUsername = body.dataset.currentUsername || "you";
 
-  function getStoredToken() {
-    return window.localStorage.getItem("authToken");
-  }
+  let currentUser = null;
 
-  function setStoredToken(token) {
-    window.localStorage.setItem("authToken", token);
-  }
-
-  async function ensureToken() {
-    let token = getStoredToken();
-    if (token) {
-      return token;
+  async function ensureSession() {
+    if (currentUser) {
+      return currentUser;
     }
 
-    const username = window.prompt("Username:");
-    if (!username) {
-      return null;
-    }
-    const password = window.prompt("Password:");
-    if (!password) {
-      return null;
-    }
-
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+    const response = await fetch("/api/auth/me", {
+      credentials: "same-origin",
     });
-    const payload = await response.json();
     if (!response.ok) {
-      alert(payload.error || "Login failed.");
+      const next = encodeURIComponent(
+        window.location.pathname + window.location.search
+      );
+      window.location.href = `/login?next=${next}`;
       return null;
     }
-    if (payload.user) {
-      currentUsername = payload.user.username || currentUsername;
-      currentUserId = payload.user.id || currentUserId;
-    }
-    setStoredToken(payload.token);
-    return payload.token;
+    const payload = await response.json();
+    currentUser = payload;
+    currentUsername = payload.username || currentUsername;
+    currentUserId = payload.id || currentUserId;
+    return currentUser;
   }
 
   const sections = document.querySelectorAll(".addCommentSection");
@@ -67,8 +50,8 @@ function initCommentPosting() {
         return;
       }
 
-      const token = await ensureToken();
-      if (!token) {
+      const session = await ensureSession();
+      if (!session) {
         return;
       }
 
@@ -80,8 +63,8 @@ function initCommentPosting() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
+          credentials: "same-origin",
           body: JSON.stringify({ text }),
         });
 
