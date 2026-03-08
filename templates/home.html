@@ -15,10 +15,13 @@
     <header>
       <h1>Photo App</h1>
       <nav>
-        <p>{{ profile.username }}</p>
+        <p>{{ (current_user.username if current_user else profile.username) }}</p>
+        {% if is_authenticated %}
+        <a href="{{ url_for('logout') }}" style="text-decoration: none;">Logout</a>
+        {% else %}
         <a href="{{ url_for('login_page') }}" style="text-decoration: none;">Login</a>
         <a href="{{ url_for('register_page') }}" style="text-decoration: none;">Register</a>
-        <a href="{{ url_for('logout') }}" style="text-decoration: none;">Logout</a>
+        {% endif %}
         <a href="{{ url_for('docs') }}" style="text-decoration: none;">API Docs</a>
       </nav>
     </header>

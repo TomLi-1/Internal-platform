@@ -140,7 +140,8 @@ def _create_token(user_id):
         hours=int(current_app.config.get("JWT_EXPIRES_HOURS", 6))
     )
     payload = {
-        "sub": user_id,
+        # JWT "sub" should be a string per spec (and PyJWT enforces this in newer versions).
+        "sub": str(user_id),
         "iat": int(now.timestamp()),
         "exp": int(expires.timestamp()),
     }
@@ -158,6 +159,16 @@ def _decode_token(token):
     )
 
 
+def _user_id_from_payload(payload):
+    sub = payload.get("sub")
+    if sub is None:
+        return None
+    try:
+        return int(sub)
+    except (TypeError, ValueError):
+        return None
+
+
 def _get_token_from_request():
     header = request.headers.get("Authorization", "")
     if header.startswith("Bearer "):
@@ -165,6 +176,20 @@ def _get_token_from_request():
         if token:
             return token
     return request.cookies.get("auth_token")
+
+
+def _current_user_from_token():
+    token = _get_token_from_request()
+    if not token:
+        return None
+    try:
+        payload = _decode_token(token)
+    except jwt.InvalidTokenError:
+        return None
+    user_id = _user_id_from_payload(payload)
+    if user_id is None:
+        return None
+    return db.session.get(User, user_id)
 
 
 def _set_auth_cookie(response, token):
@@ -180,7 +205,7 @@ def _set_auth_cookie(response, token):
 
 
 def _clear_auth_cookie(response):
-    response.set_cookie("auth_token", "", expires=0)
+    response.delete_cookie("auth_token", path="/")
 
 
 def _issue_auth_response(user, status_code=200):
@@ -188,6 +213,17 @@ def _issue_auth_response(user, status_code=200):
     response = jsonify({"token": token, "user": _serialize_user(user)})
     _set_auth_cookie(response, token)
     return response, status_code
+
+
+def _fill_feed_with_fake_data(profile, suggestions, stories, posts):
+    fake_profile, fake_suggestions, fake_stories, fake_posts = _load_fake_feed()
+    if not suggestions:
+        suggestions = fake_suggestions
+    if not stories:
+        stories = fake_stories
+    if not posts:
+        posts = fake_posts
+    return profile or fake_profile, suggestions, stories, posts
 
 
 def require_auth(fn):
@@ -202,7 +238,10 @@ def require_auth(fn):
             return _json_error("Token expired.", 401)
         except jwt.InvalidTokenError:
             return _json_error("Invalid token.", 401)
-        user = db.session.get(User, payload.get("sub"))
+        user_id = _user_id_from_payload(payload)
+        if user_id is None:
+            return _json_error("Invalid token.", 401)
+        user = db.session.get(User, user_id)
         if not user:
             return _json_error("User not found.", 401)
         g.current_user = user
@@ -250,12 +289,16 @@ def create_app(config_overrides=None):
 
     @app.route("/login")
     def login_page():
+        if _current_user_from_token():
+            return redirect(url_for("index"))
         return render_template(
             "auth.html", mode="login", next_url=request.args.get("next") or ""
         )
 
     @app.route("/register")
     def register_page():
+        if _current_user_from_token():
+            return redirect(url_for("index"))
         return render_template(
             "auth.html", mode="register", next_url=request.args.get("next") or ""
         )
@@ -350,6 +393,9 @@ def create_app(config_overrides=None):
 
     @app.route("/")
     def index():
+        current_user = _current_user_from_token()
+        if not current_user:
+            return redirect(url_for("login_page", next=request.path))
         try:
             data = _load_db_feed()
         except (OperationalError, ProgrammingError):
@@ -357,8 +403,13 @@ def create_app(config_overrides=None):
 
         if not data:
             profile, suggestions, stories, posts = _load_fake_feed()
+            profile = current_user
         else:
             profile, suggestions, stories, posts = data
+            profile = current_user
+            profile, suggestions, stories, posts = _fill_feed_with_fake_data(
+                profile, suggestions, stories, posts
+            )
 
         return render_template(
             "home.html",
@@ -366,6 +417,8 @@ def create_app(config_overrides=None):
             suggestions=suggestions,
             stories=stories,
             posts=posts,
+            is_authenticated=True,
+            current_user=current_user,
         )
 
     @app.route("/api/auth/register", methods=["POST"])
