@@ -126,6 +126,14 @@ nav * {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: 0.8em;
     text-decoration: none;
+    border: none;
+    background: transparent;
+    color: #2563eb;
+    cursor: pointer;
+}
+
+.followToggleButton.isFollowing {
+    color: rgb(107, 107, 107);
 }
 
 
@@ -168,6 +176,40 @@ nav * {
     color: rgb(109, 106, 106);
 }
 
+.createPostPanel {
+    width: 63vw;
+    margin-left: 5vw;
+    margin-top: 15px;
+    background-color: white;
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+#createPostForm {
+    display: flex;
+    gap: 8px;
+}
+
+#createPostForm input {
+    flex: 1;
+    padding: 8px;
+}
+
+#createPostForm button {
+    padding: 8px 14px;
+    border: none;
+    background-color: #1d4ed8;
+    color: white;
+    cursor: pointer;
+}
+
+#createPostStatus {
+    margin: 10px 0 0;
+    color: #4b5563;
+    font-family: Arial, sans-serif;
+    font-size: 0.9rem;
+}
+
 
 /* card panel */
 .cardPanel {
@@ -185,12 +227,32 @@ nav * {
 
 .postHeader {
     border: 1px solid blue;
-    /* width: 100%; */
-    /* display: flex;
-    flex-direction: row;
-    justify-content: space-between; 
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    padding-bottom: 20px;  */
+    padding: 8px 10px;
+}
+
+.postActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.editPostButton {
+    border: none;
+    background-color: #2563eb;
+    color: white;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.deletePostButton {
+    border: none;
+    background-color: #dc2626;
+    color: white;
+    padding: 6px 10px;
+    cursor: pointer;
 }
 
 .postPic img{
@@ -206,6 +268,19 @@ nav * {
 
 .threeIcons *{
     padding-right: 10px;
+}
+
+.iconButton {
+    border: none;
+    background: transparent;
+    color: #2563eb;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.iconButton.isActive,
+.commentLikeButton.isActive {
+    color: #dc2626;
 }
 
 .postContent {
@@ -250,13 +325,52 @@ em {
     margin-top: 5px;
 }
 
+.deleteCommentButton {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: #dc2626;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.editCommentButton {
+    border: none;
+    background: transparent;
+    color: #2563eb;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.commentLikeButton {
+    border: none;
+    background: transparent;
+    color: #2563eb;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.commentLikeCount {
+    color: rgb(107, 107, 107);
+    font-size: 0.85rem;
+}
+
 .addCommentSection {
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 .addCommentSection * {
     margin-right: 10px;
     margin-bottom: 10px;
+}
+
+.postCommentButton {
+    border: none;
+    background: transparent;
+    color: #2563eb;
+    cursor: pointer;
+    font-weight: bold;
 }
 
 /* .addComment * {
@@ -273,6 +387,9 @@ em {
         width: 90%;
     }
     .storyPanel {
+        width: 90%;
+    }
+    .createPostPanel {
         width: 90%;
     }
    

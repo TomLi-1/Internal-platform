@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo App Auth</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <main class="auth-shell">
+      <header class="auth-header">
+        <h1>Photo App</h1>
+        <nav>
+          <a href="{{ url_for('index') }}">Home</a>
+          <a href="{{ url_for('docs') }}">API Docs</a>
+        </nav>
+      </header>
+
+      <section class="auth-card">
+        <div class="auth-tabs">
+          <a class="tab {{ 'active' if mode == 'login' else '' }}" href="{{ url_for('login_page', next=next_url) }}">Login</a>
+          <a class="tab {{ 'active' if mode == 'register' else '' }}" href="{{ url_for('register_page', next=next_url) }}">Register</a>
+        </div>
+
+        {% if error %}
+        <div class="auth-error">{{ error }}</div>
+        {% endif %}
+
+        {% if mode == 'login' %}
+        <form class="auth-form" method="post" action="{{ url_for('login_form', next=next_url) }}">
+          <input type="hidden" name="next" value="{{ next_url }}">
+          <label>
+            Username
+            <input name="username" type="text" autocomplete="username" required>
+          </label>
+          <label>
+            Password
+            <input name="password" type="password" autocomplete="current-password" required>
+          </label>
+          <button type="submit">Sign In</button>
+        </form>
+        <p class="auth-hint">Need an account? <a href="{{ url_for('register_page', next=next_url) }}">Register here</a>.</p>
+        {% else %}
+        <form class="auth-form" method="post" action="{{ url_for('register_form', next=next_url) }}">
+          <input type="hidden" name="next" value="{{ next_url }}">
+          <label>
+            First Name
+            <input name="first_name" type="text" autocomplete="given-name" required>
+          </label>
+          <label>
+            Last Name
+            <input name="last_name" type="text" autocomplete="family-name" required>
+          </label>
+          <label>
+            Username
+            <input name="username" type="text" autocomplete="username" required>
+          </label>
+          <label>
+            Email
+            <input name="email" type="email" autocomplete="email" required>
+          </label>
+          <label>
+            Password
+            <input name="password" type="password" autocomplete="new-password" required>
+          </label>
+          <button type="submit">Create Account</button>
+        </form>
+        <p class="auth-hint">Already have an account? <a href="{{ url_for('login_page', next=next_url) }}">Login here</a>.</p>
+        {% endif %}
+      </section>
+    </main>
+  </body>
+</html>
