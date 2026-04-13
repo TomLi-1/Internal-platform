@@ -65,12 +65,40 @@ def test_posts_comments_likes_follow(client):
         headers=auth_headers(token2),
     )
     assert comment_response.status_code == 201
+    comment = comment_response.get_json()
+    comment_id = comment["id"]
+
+    updated_comment = client.put(
+        f"/api/comments/{comment_id}",
+        json={"text": "very nice"},
+        headers=auth_headers(token2),
+    )
+    assert updated_comment.status_code == 200
+    assert updated_comment.get_json()["text"] == "very nice"
 
     like_response = client.post(
         f"/api/posts/{post_id}/likes",
         headers=auth_headers(token2),
     )
     assert like_response.status_code in (200, 201)
+
+    unlike_response = client.delete(
+        f"/api/posts/{post_id}/likes",
+        headers=auth_headers(token2),
+    )
+    assert unlike_response.status_code == 200
+
+    comment_like_response = client.post(
+        f"/api/comments/{comment_id}/likes",
+        headers=auth_headers(token1),
+    )
+    assert comment_like_response.status_code in (200, 201)
+
+    comment_unlike_response = client.delete(
+        f"/api/comments/{comment_id}/likes",
+        headers=auth_headers(token1),
+    )
+    assert comment_unlike_response.status_code == 200
 
     follow_response = client.post(
         f"/api/following/{user2['id']}",
@@ -82,3 +110,15 @@ def test_posts_comments_likes_follow(client):
     assert list_following.status_code == 200
     data = list_following.get_json()
     assert any(user["id"] == user2["id"] for user in data["following"])
+
+    unfollow_response = client.delete(
+        f"/api/following/{user2['id']}",
+        headers=auth_headers(token1),
+    )
+    assert unfollow_response.status_code == 200
+
+    delete_comment_response = client.delete(
+        f"/api/comments/{comment_id}",
+        headers=auth_headers(token2),
+    )
+    assert delete_comment_response.status_code == 200

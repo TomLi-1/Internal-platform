@@ -35,13 +35,20 @@
       <div class="suggestions">
         <p id="suggestionsforyou">suggestions for you</p>
         {% for suggestion in suggestions %}
-        <div class="suggestedAccount">
+        <div class="suggestedAccount" data-user-id="{{ suggestion.id|default('') }}">
           <img src="{{ suggestion.thumb_url or suggestion.image_url }}" alt="profile_img" />
           <div class="nameBox">
             <p class="suggestedPeople">{{ suggestion.username }}</p>
             <p class="suggestWord">suggested for you</p>
           </div>
-          <a class="followLink" href="https://www.google.com">follow</a>
+          <button
+            class="followLink followToggleButton"
+            data-user-id="{{ suggestion.id|default('') }}"
+            data-following="{{ 'true' if suggestion.viewer_is_following else 'false' }}"
+            type="button"
+          >
+            {{ 'Following' if suggestion.viewer_is_following else 'Follow' }}
+          </button>
         </div>
         {% endfor %}
       </div>
@@ -57,23 +64,46 @@
       {% endfor %}
     </div>
 
+    <section class="createPostPanel">
+      <form id="createPostForm">
+        <input id="postImageUrl" name="image_url" placeholder="Image URL" required />
+        <input id="postCaption" name="caption" placeholder="Write a caption (optional)" />
+        <button type="submit">Post</button>
+      </form>
+      <p id="createPostStatus" aria-live="polite"></p>
+    </section>
+
     <!-- card panel -->
     <div class="cardPanel">
       {% for post in posts %}
-      <div class="card" data-post-id="{{ post.id|default('') }}">
+      <div class="card" data-post-id="{{ post.id|default('') }}" data-owner-id="{{ post.user.id|default('') }}">
         <!-- post header -->
         <div class="postHeader">
           <div class="postUser">{{ post.user.username }}</div>
-          <div><em class="fas fa-ellipsis-h"></em></div>
+          <div class="postActions">
+            {% if current_user and post.user.id is defined and post.user.id == current_user.id and post.id %}
+            <button class="editPostButton" data-post-id="{{ post.id }}" type="button">Edit</button>
+            <button class="deletePostButton" data-post-id="{{ post.id }}" type="button">Delete</button>
+            {% else %}
+            <em class="fas fa-ellipsis-h"></em>
+            {% endif %}
+          </div>
         </div>
         <div class="postPic">
-          <img src="{{ post.image_url }}" alt="postPic"/>
+          <img class="postImage" src="{{ post.image_url }}" alt="postPic"/>
         </div>
         <!-- post content -->
         <div class="postContent">
           <div class="icons">
             <div class="threeIcons">
-              <em class="far fa-heart"></em>
+              <button
+                class="iconButton postLikeButton"
+                data-post-id="{{ post.id|default('') }}"
+                data-liked="{{ 'true' if post.viewer_has_liked else 'false' }}"
+                type="button"
+              >
+                {{ 'Unlike' if post.viewer_has_liked else 'Like' }}
+              </button>
               <em class="far fa-comment"></em>
               <em class="far fa-paper-plane"></em>
             </div>
@@ -81,18 +111,30 @@
               <em class="far fa-bookmark"></em>
             </div>
           </div>
-          <p><strong>{{ post.like_count }} Likes</strong></p>
+          <p class="postLikes"><strong><span class="postLikeCount">{{ post.like_count }}</span> Likes</strong></p>
           <div class="realContent">
             <p class="postUser"><strong>{{ post.user.username }}</strong></p>
-            <p>{{ post.caption }}</p>
-            <a href="https://www.google.com" style="text-decoration: none;">more</a>
+            <p class="postCaption">{{ post.caption }}</p>
           </div>
           <!-- comments -->
           <div class="comments">
             {% for comment in post.comments[:2] %}
-            <div class="comment">
+            <div class="comment" data-comment-id="{{ comment.id|default('') }}" data-owner-id="{{ comment.user.id|default('') }}">
               <p class="postUser"><strong>{{ comment.user.username }}</strong></p>
-              <p>{{ comment.text }}</p>
+              <p class="commentText">{{ comment.text }}</p>
+              <button
+                class="commentLikeButton"
+                data-comment-id="{{ comment.id|default('') }}"
+                data-liked="{{ 'true' if comment.viewer_has_liked else 'false' }}"
+                type="button"
+              >
+                {{ 'Unlike' if comment.viewer_has_liked else 'Like' }}
+              </button>
+              <span class="commentLikeCount">{{ comment.like_count }}</span>
+              {% if current_user and comment.user.id is defined and comment.user.id == current_user.id and comment.id %}
+              <button class="editCommentButton" data-comment-id="{{ comment.id }}" type="button">Edit</button>
+              <button class="deleteCommentButton" data-comment-id="{{ comment.id }}" type="button">Delete</button>
+              {% endif %}
             </div>
             {% endfor %}
             <div class="postTime" style="color: darkgrey;font: 0.9em sans-serif;">{{ post.display_time }}</div>
@@ -103,7 +145,7 @@
               <em class="far fa-smile"></em>
               <input placeholder="Add a comment"/>
             </div>
-            <a class="postCommentButton" href="https://www.google.com" style="text-decoration: none">Post</a>
+            <button class="postCommentButton" type="button">Post</button>
           </div>
         </div>
       </div>

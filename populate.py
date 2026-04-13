@@ -1,11 +1,22 @@
-from models import db, User, Post, Comment, LikeComment, LikePost, Bookmark, Following, Story
 import random
-from flask import Flask
-from faker import Faker
 from datetime import datetime, timedelta
+
+from faker import Faker
+from flask import Flask
 
 from config import get_database_url
 from fake_data import generate_image
+from models import (
+    Bookmark,
+    Comment,
+    Following,
+    LikeComment,
+    LikePost,
+    Post,
+    Story,
+    User,
+    db,
+)
 
 fake = Faker()
 
@@ -20,69 +31,74 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
 
-# global variables to keep track of what got created and for whom
 users = []
 posts = []
 comments = []
 ppl_user_is_following_map = {}
 
+
+def _reset_tracking():
+    users.clear()
+    posts.clear()
+    comments.clear()
+    ppl_user_is_following_map.clear()
+
+
 def _create_user():
-    # 1. generate fake user data
     profile = fake.simple_profile()
-    tokens = profile['name'].split(' ')
+    tokens = profile["name"].split(" ")
     first_name = tokens.pop(0)
-    last_name = ' '.join(tokens)
-    username = '{0}_{1}'.format(first_name, last_name.replace(' ', '_')).lower()
-    provider = profile['mail'].split('@')[1]
-    email = '{0}@{1}'.format(username, provider)
-    
-    # 2. create a new user (DB object)
-    user = User(first_name, last_name, username, email,
+    last_name = " ".join(tokens)
+    username = "{0}_{1}".format(first_name, last_name.replace(" ", "_")).lower()
+    provider = profile["mail"].split("@")[1]
+    email = "{0}@{1}".format(username, provider)
+
+    user = User(
+        first_name,
+        last_name,
+        username,
+        email,
         image_url=generate_image(),
-        thumb_url= generate_image(width=30, height=30)
+        thumb_url=generate_image(width=30, height=30),
     )
-    # generate fake password:
-    password = fake.sentence(nb_words=3).replace(' ', '_').replace('.', '').lower()
-    
-    # terrible idea but we're just learning...
-    user.password_plaintext = password       
-    
-    # encrypt fake password (how you should actually do it)...
-    user.set_password(fake.password(15, 25)) # encrypts password
+    password = (
+        fake.sentence(nb_words=3).replace(" ", "_").replace(".", "").lower()
+    )
+    user.password_plaintext = password
+    user.set_password(fake.password(15, 25))
     return user
+
 
 def _create_post(user):
     time_of_post = datetime.now() - timedelta(hours=random.randint(1, 100))
     return Post(
         generate_image(width=600, height=430),
-        user.id, 
+        user.id,
         caption=fake.sentence(nb_words=random.randint(15, 50)),
-        pub_date=time_of_post
+        pub_date=time_of_post,
     )
+
 
 def _create_story(user):
     time_of_post = datetime.now() - timedelta(hours=random.randint(1, 100))
     return Story(
-        fake.sentence(nb_words=random.randint(10, 30)), 
+        fake.sentence(nb_words=random.randint(10, 30)),
         user.id,
-        pub_date=time_of_post
+        pub_date=time_of_post,
     )
-    
+
 
 def _create_post_likes(post, follower_ids):
     user_ids = follower_ids.copy()
     if not user_ids:
         return
-    # only followers of the current user (or the current user) can like
-    # the user's post:
-    # print('Creating post likes...')
     for _ in range(random.randint(0, 5)):
         i = random.randint(0, len(user_ids) - 1)
         user_id = user_ids.pop(i)
-        like = LikePost(user_id, post.id)
-        db.session.add(like)
+        db.session.add(LikePost(user_id, post.id))
         if len(user_ids) == 0:
             break
+
 
 def _create_post_bookmarks(post, follower_ids):
     user_ids = follower_ids.copy()
@@ -91,8 +107,7 @@ def _create_post_bookmarks(post, follower_ids):
     for _ in range(random.randint(0, 4)):
         i = random.randint(0, len(user_ids) - 1)
         user_id = user_ids.pop(i)
-        bookmark = Bookmark(user_id, post.id)
-        db.session.add(bookmark)
+        db.session.add(Bookmark(user_id, post.id))
         if len(user_ids) == 0:
             break
 
@@ -101,96 +116,83 @@ def _create_comment(post, follower_ids):
     return Comment(
         fake.sentence(nb_words=random.randint(15, 50)),
         random.choice(follower_ids),
-        post.id
+        post.id,
     )
 
+
 def create_users(n=30):
+    created = []
     for _ in range(n):
         user = _create_user()
         users.append(user)
+        created.append(user)
         db.session.add(user)
     db.session.commit()
+    return created
 
-def create_accounts_that_you_follow(users):
-    for user in users:
+
+def create_accounts_that_you_follow(seed_users):
+    for user in seed_users:
         accounts_to_follow = []
-        while len(accounts_to_follow) < 10:
-            candidate_account = random.choice(users)
+        while len(accounts_to_follow) < min(10, max(0, len(seed_users) - 1)):
+            candidate_account = random.choice(seed_users)
             if candidate_account != user and candidate_account not in accounts_to_follow:
-                following = Following(user.id, candidate_account.id)
-                db.session.add(following)
+                db.session.add(Following(user.id, candidate_account.id))
 
-
-                # add to map:
                 if user.id not in ppl_user_is_following_map:
                     ppl_user_is_following_map[user.id] = []
                 ppl_user_is_following_map[user.id].append(candidate_account.id)
-                
+
                 accounts_to_follow.append(candidate_account)
     db.session.commit()
-        
-def create_posts(users):
-    for user in users:
+
+
+def create_posts(seed_users):
+    created = []
+    for user in seed_users:
         for _ in range(random.randint(6, 12)):
             post = _create_post(user)
             posts.append(post)
+            created.append(post)
             db.session.add(post)
     db.session.commit()
+    return created
 
-def create_stories(users):
-    i = 0
-    for user in users:
-        if i % 3: # every third user has a story
-            story = _create_story(user)
-            db.session.add(story)
-        i += 1
+
+def create_stories(seed_users):
+    for i, user in enumerate(seed_users):
+        if i % 3:
+            db.session.add(_create_story(user))
     db.session.commit()
 
+
 def _get_people_who_follow(user_id):
-    '''
-    select bookmarks.user_id as owner_id, users.username as post_creator
-    from bookmarks
-    inner join posts on
-        posts.id = bookmarks.post_id
-    inner joing users on
-    users.id = posts.user_id
-    where bookmarks.user_id = 12;
-    '''
-    # print('-' * 100)
-    # for key in ppl_user_is_following_map:
-    #     print(key, ppl_user_is_following_map[key])
-    # print('-' * 100)
-    # return ppl_user_is_following_map[user_id].copy()
     user_ids_tuples = (
-        db.session
-            .query(Following.user_id)
-            .filter(Following.following_id == user_id)
-            .order_by(Following.user_id)
-            .all()
+        db.session.query(Following.user_id)
+        .filter(Following.following_id == user_id)
+        .order_by(Following.user_id)
+        .all()
     )
-    # convert to a list of ints:
     return [id for (id,) in user_ids_tuples]
 
-def create_post_likes(posts):
-    for post in posts:
+
+def create_post_likes(seed_posts):
+    for post in seed_posts:
         auth_user_ids = _get_people_who_follow(post.user_id)
         _create_post_likes(post, auth_user_ids)
     db.session.commit()
 
-def create_bookmarks(posts):
-    for post in posts:
-        '''
-        Q: A user just posted an update. how do I find out who 
-        follows that user?
-        A: I query the "following" table for all the user_ids 
-        where following_id = post.user_id        
-        '''
+
+def create_bookmarks(seed_posts):
+    for post in seed_posts:
         auth_user_ids = _get_people_who_follow(post.user_id)
         _create_post_bookmarks(post, auth_user_ids)
     db.session.commit()
 
-def create_comments(posts):
-    for post in posts:
+
+def create_comments(seed_posts):
+    created = []
+    for post in seed_posts:
         auth_user_ids = _get_people_who_follow(post.user_id)
         if not auth_user_ids:
             continue
@@ -198,64 +200,61 @@ def create_comments(posts):
             comment = _create_comment(post, auth_user_ids)
             db.session.add(comment)
             comments.append(comment)
+            created.append(comment)
     db.session.commit()
+    return created
 
-def create_comment_likes(comments):
-    for comment in comments:
+
+def create_comment_likes(seed_comments):
+    for comment in seed_comments:
         auth_user_ids = _get_people_who_follow(comment.user_id)
         if not auth_user_ids:
             continue
         for _ in range(random.randint(0, 3)):
             i = random.randint(0, len(auth_user_ids) - 1)
             user_id = auth_user_ids.pop(i)
-            like = LikeComment(user_id, comment.id)
-            db.session.add(like)
+            db.session.add(LikeComment(user_id, comment.id))
             if len(auth_user_ids) == 0:
                 break
     db.session.commit()
 
-# creates all of the tables if they don't exist:
-with app.app_context():
-    step = 1
-    # uncomment if you want to drop all tables
-    print('{0}. Dropping all tables...'.format(step))
-    db.drop_all()
-    step += 1 
 
-    print('{0}. creating DB tables (if they don\'t already exist)...'.format(step))
-    db.create_all()
-    step += 1 
+def seed_database(reset=False, min_users=12, min_posts=24):
+    with app.app_context():
+        _reset_tracking()
 
-    print('{0}. creating 30 accounts (slow b/c of password hashing)...'.format(step))
-    create_users(n=30)
-    step += 1 
+        if reset:
+            db.drop_all()
 
-    print('{0}. assigning users some accounts to follow...'.format(step))
-    create_accounts_that_you_follow(users)
-    step += 1 
+        db.create_all()
 
-    print('{0}. creating fake posts...'.format(step))
-    create_posts(users)
-    step += 1 
+        existing_users = User.query.count()
+        existing_posts = Post.query.count()
 
-    print('{0}. creating fake stories...'.format(step))
-    create_stories(users)
-    step += 1 
+        if not reset and existing_users >= min_users and existing_posts >= min_posts:
+            print("Sample data already present. Skipping seed.")
+            return
 
-    print('{0}. creating fake post likes...'.format(step))
-    create_post_likes(posts)
-    step += 1 
+        users_needed = max(0, min_users - existing_users)
+        if users_needed == 0 and existing_posts >= min_posts:
+            print("Database already has enough users and posts. Skipping seed.")
+            return
 
-    print('{0}. creating fake bookmarks...'.format(step))
-    create_bookmarks(posts)
-    step += 1 
+        print("Seeding sample data...")
+        seed_users = create_users(n=max(users_needed, 12 if reset else users_needed))
+        if not seed_users:
+            print("No new users needed; skipping seed user generation.")
+            return
 
-    print('{0}. creating fake comments...'.format(step))
-    create_comments(posts)
-    step += 1
+        create_accounts_that_you_follow(seed_users)
+        seed_posts = create_posts(seed_users)
+        create_stories(seed_users)
+        create_post_likes(seed_posts)
+        create_bookmarks(seed_posts)
+        seed_comments = create_comments(seed_posts)
+        create_comment_likes(seed_comments)
+        print("Sample data ready.")
 
-    print('{0}. creating fake comment likes...'.format(step))
-    create_comment_likes(comments)
-    step += 1  
 
-    print('DONE!')
+if __name__ == "__main__":
+    seed_database(reset=True, min_users=30, min_posts=180)

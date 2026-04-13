@@ -63,14 +63,27 @@ def _load_fake_feed():
     return profile, suggestions, stories, posts
 
 
-def _load_db_feed():
-    profile = User.query.order_by(User.id).first()
+def _following_ids_for_user(user_id):
+    rows = (
+        Following.query.with_entities(Following.following_id)
+        .filter(Following.user_id == user_id)
+        .all()
+    )
+    return {following_id for (following_id,) in rows}
+
+
+def _load_db_feed(current_user=None):
+    profile = current_user or User.query.order_by(User.id).first()
     if not profile:
         return None
+
+    following_ids = _following_ids_for_user(profile.id)
 
     suggestions = (
         User.query.filter(User.id != profile.id).order_by(User.id).limit(5).all()
     )
+    for suggestion in suggestions:
+        suggestion.viewer_is_following = suggestion.id in following_ids
     stories = (
         Story.query.options(selectinload(Story.user))
         .order_by(Story.pub_date.desc())
@@ -81,6 +94,7 @@ def _load_db_feed():
         Post.query.options(
             selectinload(Post.user),
             selectinload(Post.comments).selectinload(Comment.user),
+            selectinload(Post.comments).selectinload(Comment.likes),
             selectinload(Post.likes),
         )
         .order_by(Post.pub_date.desc())
@@ -90,6 +104,17 @@ def _load_db_feed():
     for post in posts:
         post.like_count = len(post.likes)
         post.display_time = format_display_time(post.pub_date)
+        post.viewer_has_liked = bool(
+            current_user and any(like.user_id == current_user.id for like in post.likes)
+        )
+        post.is_owner = bool(current_user and post.user_id == current_user.id)
+        for comment in post.comments:
+            comment.like_count = len(comment.likes)
+            comment.viewer_has_liked = bool(
+                current_user
+                and any(like.user_id == current_user.id for like in comment.likes)
+            )
+            comment.is_owner = bool(current_user and comment.user_id == current_user.id)
     return profile, suggestions, stories, posts
 
 
@@ -105,17 +130,22 @@ def _serialize_user(user):
     }
 
 
-def _serialize_comment(comment):
+def _serialize_comment(comment, current_user=None):
     return {
         "id": comment.id,
         "text": comment.text,
         "user": _serialize_user(comment.user),
         "post_id": comment.post_id,
         "created_at": comment.created_at.isoformat() if comment.created_at else None,
+        "like_count": len(comment.likes),
+        "viewer_has_liked": bool(
+            current_user and any(like.user_id == current_user.id for like in comment.likes)
+        ),
+        "is_owner": bool(current_user and comment.user_id == current_user.id),
     }
 
 
-def _serialize_post(post, include_comments=False):
+def _serialize_post(post, include_comments=False, current_user=None):
     data = {
         "id": post.id,
         "image_url": post.image_url,
@@ -124,9 +154,16 @@ def _serialize_post(post, include_comments=False):
         "like_count": len(post.likes),
         "comment_count": len(post.comments),
         "pub_date": post.pub_date.isoformat() if post.pub_date else None,
+        "viewer_has_liked": bool(
+            current_user and any(like.user_id == current_user.id for like in post.likes)
+        ),
+        "is_owner": bool(current_user and post.user_id == current_user.id),
     }
     if include_comments:
-        data["comments"] = [_serialize_comment(comment) for comment in post.comments]
+        data["comments"] = [
+            _serialize_comment(comment, current_user=current_user)
+            for comment in post.comments
+        ]
     return data
 
 
@@ -397,7 +434,7 @@ def create_app(config_overrides=None):
         if not current_user:
             return redirect(url_for("login_page", next=request.path))
         try:
-            data = _load_db_feed()
+            data = _load_db_feed(current_user=current_user)
         except (OperationalError, ProgrammingError):
             data = None
 
@@ -473,15 +510,23 @@ def create_app(config_overrides=None):
     @app.route("/api/posts", methods=["GET"])
     def list_posts():
         limit = request.args.get("limit", type=int)
+        current_user = _current_user_from_token()
         query = Post.query.options(
             selectinload(Post.user),
             selectinload(Post.comments).selectinload(Comment.user),
+            selectinload(Post.comments).selectinload(Comment.likes),
             selectinload(Post.likes),
         ).order_by(Post.pub_date.desc())
         if limit:
             query = query.limit(limit)
         posts = query.all()
-        return jsonify({"posts": [_serialize_post(post) for post in posts]})
+        return jsonify(
+            {
+                "posts": [
+                    _serialize_post(post, current_user=current_user) for post in posts
+                ]
+            }
+        )
 
     @app.route("/api/posts/<int:post_id>", methods=["GET"])
     def get_post(post_id):
@@ -489,6 +534,7 @@ def create_app(config_overrides=None):
             Post.query.options(
                 selectinload(Post.user),
                 selectinload(Post.comments).selectinload(Comment.user),
+                selectinload(Post.comments).selectinload(Comment.likes),
                 selectinload(Post.likes),
             )
             .filter_by(id=post_id)
@@ -496,7 +542,7 @@ def create_app(config_overrides=None):
         )
         if not post:
             return _json_error("Post not found.", 404)
-        return jsonify(_serialize_post(post, include_comments=True))
+        return jsonify(_serialize_post(post, include_comments=True, current_user=_current_user_from_token()))
 
     @app.route("/api/posts", methods=["POST"])
     @require_auth
@@ -510,7 +556,7 @@ def create_app(config_overrides=None):
         db.session.add(post)
         db.session.commit()
         post.user = g.current_user
-        return jsonify(_serialize_post(post, include_comments=True)), 201
+        return jsonify(_serialize_post(post, include_comments=True, current_user=g.current_user)), 201
 
     @app.route("/api/posts/<int:post_id>", methods=["PUT"])
     @require_auth
@@ -519,6 +565,7 @@ def create_app(config_overrides=None):
             Post.query.options(
                 selectinload(Post.user),
                 selectinload(Post.comments).selectinload(Comment.user),
+                selectinload(Post.comments).selectinload(Comment.likes),
                 selectinload(Post.likes),
             )
             .filter_by(id=post_id)
@@ -537,7 +584,7 @@ def create_app(config_overrides=None):
         if "image_url" in data:
             post.image_url = data["image_url"]
         db.session.commit()
-        return jsonify(_serialize_post(post, include_comments=True))
+        return jsonify(_serialize_post(post, include_comments=True, current_user=g.current_user))
 
     @app.route("/api/posts/<int:post_id>", methods=["DELETE"])
     @require_auth
@@ -562,7 +609,16 @@ def create_app(config_overrides=None):
             .order_by(Comment.created_at.asc())
             .all()
         )
-        return jsonify({"comments": [_serialize_comment(comment) for comment in comments]})
+        return jsonify(
+            {
+                "comments": [
+                    _serialize_comment(
+                        comment, current_user=_current_user_from_token()
+                    )
+                    for comment in comments
+                ]
+            }
+        )
 
     @app.route("/api/posts/<int:post_id>/comments", methods=["POST"])
     @require_auth
@@ -579,7 +635,7 @@ def create_app(config_overrides=None):
         db.session.add(comment)
         db.session.commit()
         comment.user = g.current_user
-        return jsonify(_serialize_comment(comment)), 201
+        return jsonify(_serialize_comment(comment, current_user=g.current_user)), 201
 
     @app.route("/api/comments/<int:comment_id>", methods=["GET"])
     def get_comment(comment_id):
@@ -590,7 +646,7 @@ def create_app(config_overrides=None):
         )
         if not comment:
             return _json_error("Comment not found.", 404)
-        return jsonify(_serialize_comment(comment))
+        return jsonify(_serialize_comment(comment, current_user=_current_user_from_token()))
 
     @app.route("/api/comments/<int:comment_id>", methods=["PUT"])
     @require_auth
@@ -610,7 +666,7 @@ def create_app(config_overrides=None):
             return _json_error("text is required.", 400)
         comment.text = data["text"]
         db.session.commit()
-        return jsonify(_serialize_comment(comment))
+        return jsonify(_serialize_comment(comment, current_user=g.current_user))
 
     @app.route("/api/comments/<int:comment_id>", methods=["DELETE"])
     @require_auth

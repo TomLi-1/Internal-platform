@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+spec:
+  containers:
+  - name: myapp
+    image: tomliii/flask-app:v2
+    ports:
+    - containerPort: 5000
+    env:
+      - name: DB_URL
+        value: postgresql://tomli:12345678@photo-postgres:5432/photo_app
